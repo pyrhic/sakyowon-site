@@ -4,82 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>오늘 업무 입력 — 이규영</title>
-<style>
-  body {
-    font-family: -apple-system, "Malgun Gothic", sans-serif;
-    background: #0f0f10;
-    color: #eee;
-    display: flex;
-    justify-content: center;
-    min-height: 100vh;
-    margin: 0;
-    padding: 20px;
-  }
-  .card {
-    max-width: 420px;
-    width: 100%;
-  }
-  h1 {
-    font-size: 1.4rem;
-    margin-bottom: 1.2rem;
-  }
-  label {
-    display: block;
-    margin-top: 14px;
-    margin-bottom: 6px;
-    color: #aaa;
-    font-size: 0.9rem;
-  }
-  input, textarea {
-    width: 100%;
-    box-sizing: border-box;
-    background: #1a1a1c;
-    border: 1px solid #333;
-    border-radius: 8px;
-    color: #eee;
-    padding: 10px 12px;
-    font-size: 1rem;
-    font-family: inherit;
-  }
-  textarea {
-    min-height: 120px;
-    resize: vertical;
-  }
-  button {
-    width: 100%;
-    margin-top: 20px;
-    padding: 14px;
-    background: #3b6ef0;
-    border: none;
-    border-radius: 10px;
-    color: #fff;
-    font-size: 1rem;
-    cursor: pointer;
-  }
-  button:disabled {
-    background: #444;
-  }
-  .msg {
-    margin-top: 14px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    display: none;
-  }
-  .msg.ok { background: #16321e; color: #7ee29a; display: block; }
-  .msg.err { background: #3a1a1a; color: #ff9d9d; display: block; }
-  a.back {
-    display: inline-block;
-    margin-top: 20px;
-    color: #888;
-    text-decoration: none;
-    font-size: 0.85rem;
-  }
-</style>
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <div class="card">
-    <h1>📝 오늘 업무 입력</h1>
+  <div class="wrap">
+    <h1 style="font-size:1.4rem;margin-bottom:1.2rem;">오늘 업무 입력</h1>
     <form id="logForm">
       <label for="date">날짜</label>
       <input type="date" id="date" required>
