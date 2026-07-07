@@ -96,6 +96,10 @@ textarea {
   resize: vertical;
 }
 
+button[type="submit"] {
+  margin-top: 24px;
+}
+
 button:disabled {
   background: #ccc;
   border-color: #ccc;
