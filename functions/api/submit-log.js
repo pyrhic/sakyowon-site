@@ -106,7 +106,8 @@ export async function onRequestPost(context) {
     const sheetRowNumber = rowIndex + 1; // B:I 범위는 1행부터 시작하므로 인덱스+1이 실제 행 번호
     const existingRow = allRows[rowIndex] || [];
     const existingTasks = (existingRow[3] || "").trim(); // E열
-    const mergedTasks = existingTasks ? `${existingTasks}\n${tasks}` : tasks;
+    // overwrite=true면 수정(덮어쓰기), 아니면 기존 내용에 이어붙임(새 입력)
+    const mergedTasks = body.overwrite || !existingTasks ? tasks : `${existingTasks}\n${tasks}`;
 
     async function updateCell(col, value) {
       const cellRange = encodeURIComponent(`${SHEET_TAB}!${col}${sheetRowNumber}`);

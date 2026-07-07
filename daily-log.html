@@ -23,13 +23,59 @@
       <div class="msg" id="msg"></div>
     </form>
     <a class="back" href="/">← 돌아가기</a>
+
+    <h2 style="font-size:1.1rem;margin-top:10px;">이번 주 업무일지</h2>
+    <div id="logList"><div class="empty">불러오는 중...</div></div>
   </div>
 
 <script>
   const dowNames = ["일", "월", "화", "수", "목", "금", "토"];
   const dateInput = document.getElementById("date");
-  const today = new Date();
-  dateInput.value = today.toISOString().slice(0, 10);
+  dateInput.value = new Date().toISOString().slice(0, 10);
+
+  let editingDate = null;
+
+  function resetForm() {
+    editingDate = null;
+    document.getElementById("submitBtn").textContent = "구글시트에 저장";
+    document.getElementById("tasks").value = "";
+    document.getElementById("leave").value = "";
+  }
+
+  async function loadWeekLogs() {
+    const box = document.getElementById("logList");
+    try {
+      const res = await fetch("/api/week-logs");
+      const rows = await res.json();
+      if (!rows.length) {
+        box.innerHTML = '<div class="empty">이번 주 입력된 기록이 없습니다.</div>';
+        return;
+      }
+      box.innerHTML = rows
+        .map(
+          (row) => `<div class="report">
+            <div class="period">${row.date}(${row.dow})${row.leave ? `<span class="leave">${row.leave}</span>` : ""}</div>
+            <div class="day">${(row.tasks || "").replace(/\n/g, "<br>") || "(비어있음)"}</div>
+            <button type="button" class="edit-btn" data-date="${row.date}" data-dow="${row.dow}"
+              data-tasks="${encodeURIComponent(row.tasks || "")}" data-leave="${encodeURIComponent(row.leave || "")}"
+              style="margin-top:10px;width:auto;padding:6px 14px;font-size:0.85rem;">수정</button>
+          </div>`
+        )
+        .join("");
+
+      document.querySelectorAll(".edit-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          editingDate = { date: btn.dataset.date, dow: btn.dataset.dow };
+          document.getElementById("tasks").value = decodeURIComponent(btn.dataset.tasks);
+          document.getElementById("leave").value = decodeURIComponent(btn.dataset.leave);
+          document.getElementById("submitBtn").textContent = "수정 완료";
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      });
+    } catch (err) {
+      box.innerHTML = '<div class="empty">불러오기 실패: ' + err.message + "</div>";
+    }
+  }
 
   document.getElementById("logForm").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -40,28 +86,34 @@
     btn.disabled = true;
     btn.textContent = "저장 중...";
 
-    const dateVal = dateInput.value;
-    const d = new Date(dateVal + "T00:00:00");
-    const dow = dowNames[d.getDay()];
-    const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+    let date, dow;
+    if (editingDate) {
+      date = editingDate.date;
+      dow = editingDate.dow;
+    } else {
+      const d = new Date(dateInput.value + "T00:00:00");
+      dow = dowNames[d.getDay()];
+      date = `${d.getMonth() + 1}/${d.getDate()}`;
+    }
 
     try {
       const res = await fetch("/api/submit-log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date: dateLabel,
-          dow: dow,
+          date,
+          dow,
           tasks: document.getElementById("tasks").value.trim(),
           leave: document.getElementById("leave").value.trim(),
+          overwrite: !!editingDate,
         }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         msg.className = "msg ok";
-        msg.textContent = "저장됐습니다.";
-        document.getElementById("tasks").value = "";
-        document.getElementById("leave").value = "";
+        msg.textContent = editingDate ? "수정됐습니다." : "저장됐습니다.";
+        resetForm();
+        loadWeekLogs();
       } else {
         msg.className = "msg err";
         msg.textContent = "저장 실패: " + (data.error || "알 수 없는 오류");
@@ -71,9 +123,11 @@
       msg.textContent = "저장 실패: " + err.message;
     } finally {
       btn.disabled = false;
-      btn.textContent = "구글시트에 저장";
+      if (!editingDate) btn.textContent = "구글시트에 저장";
     }
   });
+
+  loadWeekLogs();
 </script>
 </body>
 </html>
