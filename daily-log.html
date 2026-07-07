@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘 업무 입력 — 이규영</title>
+<style>
+  body {
+    font-family: -apple-system, "Malgun Gothic", sans-serif;
+    background: #0f0f10;
+    color: #eee;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+  }
+  .card {
+    max-width: 420px;
+    width: 100%;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin-bottom: 1.2rem;
+  }
+  label {
+    display: block;
+    margin-top: 14px;
+    margin-bottom: 6px;
+    color: #aaa;
+    font-size: 0.9rem;
+  }
+  input, textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: #1a1a1c;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #eee;
+    padding: 10px 12px;
+    font-size: 1rem;
+    font-family: inherit;
+  }
+  textarea {
+    min-height: 120px;
+    resize: vertical;
+  }
+  button {
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px;
+    background: #3b6ef0;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: #444;
+  }
+  .msg {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    display: none;
+  }
+  .msg.ok { background: #16321e; color: #7ee29a; display: block; }
+  .msg.err { background: #3a1a1a; color: #ff9d9d; display: block; }
+  a.back {
+    display: inline-block;
+    margin-top: 20px;
+    color: #888;
+    text-decoration: none;
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>📝 오늘 업무 입력</h1>
+    <form id="logForm">
+      <label for="date">날짜</label>
+      <input type="date" id="date" required>
+
+      <label for="tasks">오늘 한 일</label>
+      <textarea id="tasks" placeholder="예: 활어회센터 운영진 워크숍 보조 및 촬영" required></textarea>
+
+      <label for="leave">추가 부재시간 (없으면 비워두세요)</label>
+      <input type="text" id="leave" placeholder="예: 14:00-15:00 병원">
+
+      <button type="submit" id="submitBtn">구글시트에 저장</button>
+      <div class="msg" id="msg"></div>
+    </form>
+    <a class="back" href="/">← 돌아가기</a>
+  </div>
+
+<script>
+  const dowNames = ["일", "월", "화", "수", "목", "금", "토"];
+  const dateInput = document.getElementById("date");
+  const today = new Date();
+  dateInput.value = today.toISOString().slice(0, 10);
+
+  document.getElementById("logForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("submitBtn");
+    const msg = document.getElementById("msg");
+    msg.className = "msg";
+    msg.textContent = "";
+    btn.disabled = true;
+    btn.textContent = "저장 중...";
+
+    const dateVal = dateInput.value;
+    const d = new Date(dateVal + "T00:00:00");
+    const dow = dowNames[d.getDay()];
+    const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+
+    try {
+      const res = await fetch("/api/submit-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: dateLabel,
+          dow: dow,
+          tasks: document.getElementById("tasks").value.trim(),
+          leave: document.getElementById("leave").value.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        msg.className = "msg ok";
+        msg.textContent = "저장됐습니다.";
+        document.getElementById("tasks").value = "";
+        document.getElementById("leave").value = "";
+      } else {
+        msg.className = "msg err";
+        msg.textContent = "저장 실패: " + (data.error || "알 수 없는 오류");
+      }
+    } catch (err) {
+      msg.className = "msg err";
+      msg.textContent = "저장 실패: " + err.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "구글시트에 저장";
+    }
+  });
+</script>
+</body>
+</html>
