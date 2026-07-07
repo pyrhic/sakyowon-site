@@ -79,26 +79,54 @@ export async function onRequestPost(context) {
     const serviceAccount = JSON.parse(env.GOOGLE_SERVICE_ACCOUNT_KEY);
     const accessToken = await getAccessToken(serviceAccount);
 
-    const range = encodeURIComponent(`${SHEET_TAB}!B:I`);
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
-
-    const values = [[date, dow, "", tasks, "", "", "", leave]];
-
-    const sheetRes = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ values }),
+    // 시트는 연간 날짜/요일이 미리 채워진 템플릿이라, 새 행을 추가하지 않고
+    // 해당 날짜의 기존 행을 찾아서 E(SW업무)/I(추가부재시간) 칸만 채워 넣는다.
+    const readRange = encodeURIComponent(`${SHEET_TAB}!B:I`);
+    const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${readRange}`;
+    const readRes = await fetch(readUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
-
-    if (!sheetRes.ok) {
-      const errText = await sheetRes.text();
-      return new Response(JSON.stringify({ error: "구글시트 저장 실패", detail: errText }), {
+    if (!readRes.ok) {
+      return new Response(JSON.stringify({ error: "구글시트 조회 실패", detail: await readRes.text() }), {
         status: 500,
         headers: { "Content-Type": "application/json" },
       });
+    }
+    const readData = await readRes.json();
+    const allRows = readData.values || [];
+    const rowIndex = allRows.findIndex((r) => (r[0] || "").trim() === date);
+
+    if (rowIndex === -1) {
+      return new Response(
+        JSON.stringify({ error: `시트에서 ${date} 날짜 행을 찾을 수 없습니다. 시트를 직접 확인해주세요.` }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const sheetRowNumber = rowIndex + 1; // B:I 범위는 1행부터 시작하므로 인덱스+1이 실제 행 번호
+    const existingRow = allRows[rowIndex] || [];
+    const existingTasks = (existingRow[3] || "").trim(); // E열
+    const mergedTasks = existingTasks ? `${existingTasks}\n${tasks}` : tasks;
+
+    async function updateCell(col, value) {
+      const cellRange = encodeURIComponent(`${SHEET_TAB}!${col}${sheetRowNumber}`);
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${cellRange}?valueInputOption=USER_ENTERED`;
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ values: [[value]] }),
+      });
+      if (!res.ok) {
+        throw new Error(`${col}열 저장 실패: ${await res.text()}`);
+      }
+    }
+
+    await updateCell("E", mergedTasks);
+    if (leave) {
+      await updateCell("I", leave);
     }
 
     return new Response(JSON.stringify({ success: true }), {
