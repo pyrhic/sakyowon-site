@@ -14,7 +14,8 @@
 <body>
   <div class="card" style="display:flex;align-items:center;min-height:calc(100vh - 40px);">
     <div style="width:100%;">
-      <h1>이규영</h1>
+      <img src="/flowerpot.png" alt="앱 설치" id="installBtn" style="width:120px;display:block;margin:0 auto 0.3rem;cursor:pointer;">
+      <p style="text-align:center;color:#33475b;font-size:0.8rem;margin:0 0 1.5rem;">누르면 앱으로 설치</p>
       <p class="role">사교원 후진항 어촌신활력증진사업 SW매니져</p>
       <div class="links">
         <a class="link-btn" href="/daily-log.html">오늘 업무 입력</a>
@@ -28,6 +29,26 @@
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js");
   }
+
+  let deferredPrompt = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+  });
+
+  document.getElementById("installBtn").addEventListener("click", async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+    } else if (window.matchMedia("(display-mode: standalone)").matches) {
+      alert("이미 앱으로 설치되어 있습니다.");
+    } else if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+      alert("아이폰에서는: 하단 공유 버튼(□↑) → \"홈 화면에 추가\"를 눌러주세요.");
+    } else {
+      alert("이 브라우저에서는 자동 설치를 지원하지 않아요. 브라우저 메뉴에서 \"앱 설치\" 또는 \"홈 화면에 추가\"를 찾아주세요.");
+    }
+  });
 </script>
 </body>
 </html>
