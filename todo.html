@@ -50,7 +50,7 @@
         .map(
           (row) => `<div class="todo-item ${row.completed ? "completed" : ""}" data-id="${row.id}">
             <input type="checkbox" ${row.completed ? "checked" : ""} class="todo-check">
-            <span class="todo-text"></span>
+            <span class="todo-text" contenteditable="true" spellcheck="false"></span>
             <button type="button" class="todo-del">삭제</button>
           </div>`
         )
@@ -72,6 +72,35 @@
               method: "PATCH",
               headers,
               body: JSON.stringify({ completed }),
+            });
+          } catch (err) {
+            showError(err.message);
+          }
+        });
+      });
+
+      document.querySelectorAll(".todo-text").forEach((span, i) => {
+        const originalText = rows[i].text;
+        span.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            span.blur();
+          }
+        });
+        span.addEventListener("blur", async () => {
+          const item = span.closest(".todo-item");
+          const id = item.dataset.id;
+          const newText = span.textContent.trim();
+          if (!newText) {
+            span.textContent = originalText; // 빈 값이면 되돌림
+            return;
+          }
+          if (newText === originalText) return;
+          try {
+            await fetch(`${SUPABASE_URL}/rest/v1/todos?id=eq.${id}`, {
+              method: "PATCH",
+              headers,
+              body: JSON.stringify({ text: newText }),
             });
           } catch (err) {
             showError(err.message);
