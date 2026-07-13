@@ -13,8 +13,10 @@
 <body>
   <div class="wrap">
     <a class="back" href="/">← 돌아가기</a>
-    <h1 style="font-size:1.4rem;margin-bottom:1.2rem;">주간보고서 히스토리</h1>
-    <div id="list"><div class="empty">불러오는 중...</div></div>
+    <h1 style="font-size:1.4rem;margin-bottom:0.6rem;">주간보고서 히스토리</h1>
+    <button id="genBtn" type="button" style="margin-bottom:6px;">이번 주 주간보고서 생성하기</button>
+    <div class="msg" id="genMsg"></div>
+    <div id="list" style="margin-top:20px;"><div class="empty">불러오는 중...</div></div>
     <div style="text-align:center;margin-top:28px;">
       <img src="/flowerpot.png" alt="" id="pot" style="width:80px;cursor:pointer;">
     </div>
@@ -79,6 +81,32 @@
   }
 
   loadReports();
+
+  document.getElementById("genBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("genBtn");
+    const msg = document.getElementById("genMsg");
+    btn.disabled = true;
+    btn.textContent = "생성 중...";
+    msg.className = "msg";
+    try {
+      const res = await fetch("/api/generate-weekly-report", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        msg.className = "msg ok";
+        msg.textContent = data.updated ? "이번 주 보고서를 최신 내용으로 갱신했습니다." : "이번 주 보고서가 생성됐습니다.";
+        loadReports();
+      } else {
+        msg.className = "msg err";
+        msg.textContent = "실패: " + (data.error || "알 수 없는 오류");
+      }
+    } catch (err) {
+      msg.className = "msg err";
+      msg.textContent = "실패: " + err.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "이번 주 주간보고서 생성하기";
+    }
+  });
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js");
