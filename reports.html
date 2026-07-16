@@ -66,15 +66,45 @@
     </div>`;
   }
 
+  const DOW_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
+
+  function parseKoreanDate(str) {
+    const m = String(str || "").match(/(\d+)년\s*(\d+)월\s*(\d+)일/);
+    if (!m) return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
+
+  function buildWeekSlots(d) {
+    const start = parseKoreanDate(d.periodStart);
+    const slots = [];
+    for (let i = 0; i < 5; i++) {
+      let dateStr, dow;
+      if (start) {
+        const dt = new Date(start);
+        dt.setDate(dt.getDate() + i);
+        dateStr = `${dt.getMonth() + 1}/${dt.getDate()}`;
+        dow = DOW_NAMES[dt.getDay()];
+      } else {
+        const existing = (d.days || [])[i] || {};
+        dateStr = existing.date || "";
+        dow = existing.dow || "";
+      }
+      const existing = (d.days || []).find((day) => day.date === dateStr) || {};
+      slots.push({ date: dateStr, dow, tasks: existing.tasks || [], leave: existing.leave || "" });
+    }
+    return slots;
+  }
+
   function renderEdit(row, idx) {
     const d = row.report_data;
-    const days = (d.days || [])
+    const slots = buildWeekSlots(d);
+    const days = slots
       .map(
         (day, di) => `
       <label>${escapeHtml(day.date)}(${escapeHtml(day.dow)}) 업무</label>
-      <textarea data-day="${di}" data-field="tasks" style="min-height:70px;">${escapeHtml((day.tasks || []).join("\n"))}</textarea>
+      <textarea data-day="${di}" data-date="${escapeHtml(day.date)}" data-dow="${escapeHtml(day.dow)}" data-field="tasks" style="min-height:70px;">${escapeHtml((day.tasks || []).join("\n"))}</textarea>
       <label>${escapeHtml(day.date)}(${escapeHtml(day.dow)}) 휴가/기타</label>
-      <input data-day="${di}" data-field="leave" value="${escapeHtml(day.leave || "")}">
+      <input data-day="${di}" data-date="${escapeHtml(day.date)}" data-dow="${escapeHtml(day.dow)}" data-field="leave" value="${escapeHtml(day.leave || "")}">
     `
       )
       .join("");
@@ -132,14 +162,21 @@
       const card = document.querySelector(`.report[data-idx="${idx}"]`);
       const msg = card.querySelector(".msg");
       const d = JSON.parse(JSON.stringify(row.report_data));
+      const slotsMap = {};
       card.querySelectorAll("[data-day]").forEach((el) => {
         const di = Number(el.dataset.day);
+        if (!slotsMap[di]) slotsMap[di] = { date: el.dataset.date, dow: el.dataset.dow, tasks: [], leave: "" };
         if (el.dataset.field === "tasks") {
-          d.days[di].tasks = el.value.split("\n").map((s) => s.trim()).filter(Boolean);
+          slotsMap[di].tasks = el.value.split("\n").map((s) => s.trim()).filter(Boolean);
         } else if (el.dataset.field === "leave") {
-          d.days[di].leave = el.value.trim();
+          slotsMap[di].leave = el.value.trim();
         }
       });
+      d.days = Object.keys(slotsMap)
+        .map(Number)
+        .sort((a, b) => a - b)
+        .map((i) => slotsMap[i])
+        .filter((day) => day.tasks.length > 0 || day.leave);
       const remarksEl = card.querySelector('[data-field="remarks"]');
       d.remarks = remarksEl.value.split("\n").map((s) => s.trim()).filter(Boolean);
 
