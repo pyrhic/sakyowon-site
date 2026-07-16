@@ -39,11 +39,72 @@
   const SUPABASE_URL = "https://oenqrlgmnkpzxsavnfyo.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_sZ4wQgaC5f-i40pVzf0vIA_R7iJWDf5";
 
+  let reportsData = [];
+
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  }
+
+  function renderView(row, idx) {
+    const d = row.report_data;
+    if (!d) return "";
+    const days = (d.days || [])
+      .map(
+        (day) =>
+          `<div class="day"><span class="dow">${escapeHtml(day.date)}(${escapeHtml(day.dow)})</span>${(day.tasks || [])
+            .map(escapeHtml)
+            .join(", ")}${day.leave ? `<span class="leave">${escapeHtml(day.leave)}</span>` : ""}</div>`
+      )
+      .join("");
+    return `<div class="report" data-idx="${idx}">
+      <div class="period">${escapeHtml(d.periodStart)} ~ ${escapeHtml(d.periodEnd)}</div>
+      ${days}
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button type="button" class="edit-btn" data-idx="${idx}" style="width:auto;padding:6px 12px;font-size:0.8rem;">수정</button>
+        <a href="sakyowon-hwp://generate?date=${encodeURIComponent(row.report_date)}" style="width:auto;padding:6px 12px;font-size:0.8rem;">한글파일로 다시 만들기</a>
+      </div>
+    </div>`;
+  }
+
+  function renderEdit(row, idx) {
+    const d = row.report_data;
+    const days = (d.days || [])
+      .map(
+        (day, di) => `
+      <label>${escapeHtml(day.date)}(${escapeHtml(day.dow)}) 업무</label>
+      <textarea data-day="${di}" data-field="tasks" style="min-height:70px;">${escapeHtml((day.tasks || []).join("\n"))}</textarea>
+      <label>${escapeHtml(day.date)}(${escapeHtml(day.dow)}) 휴가/기타</label>
+      <input data-day="${di}" data-field="leave" value="${escapeHtml(day.leave || "")}">
+    `
+      )
+      .join("");
+    return `<div class="report" data-idx="${idx}">
+      <div class="period">${escapeHtml(d.periodStart)} ~ ${escapeHtml(d.periodEnd)}</div>
+      ${days}
+      <label>비고 (한 줄에 하나씩)</label>
+      <textarea data-field="remarks" style="min-height:60px;">${escapeHtml((d.remarks || []).join("\n"))}</textarea>
+      <div class="msg" style="margin-top:10px;"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button type="button" class="save-btn" data-idx="${idx}" style="width:auto;padding:6px 12px;font-size:0.8rem;">저장</button>
+        <button type="button" class="cancel-btn" data-idx="${idx}" style="width:auto;padding:6px 12px;font-size:0.8rem;">취소</button>
+      </div>
+    </div>`;
+  }
+
+  function renderList() {
+    const list = document.getElementById("list");
+    if (!reportsData.length) {
+      list.innerHTML = '<div class="empty">아직 저장된 주간보고서가 없습니다.</div>';
+      return;
+    }
+    list.innerHTML = reportsData.map((row, idx) => renderView(row, idx)).join("");
+  }
+
   async function loadReports() {
     const list = document.getElementById("list");
     try {
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/weekly_reports?select=report_date,report_data&archived=eq.false&order=report_date.desc`,
+        `${SUPABASE_URL}/rest/v1/weekly_reports?select=id,report_date,report_data&archived=eq.false&order=report_date.desc`,
         {
           headers: {
             apikey: SUPABASE_ANON_KEY,
@@ -51,35 +112,61 @@
           },
         }
       );
-      const rows = await res.json();
-
-      if (!rows.length) {
-        list.innerHTML = '<div class="empty">아직 저장된 주간보고서가 없습니다.</div>';
-        return;
-      }
-
-      list.innerHTML = rows
-        .map((row) => {
-          const d = row.report_data;
-          if (!d) return "";
-          const days = (d.days || [])
-            .map(
-              (day) =>
-                `<div class="day"><span class="dow">${day.date}(${day.dow})</span>${(day.tasks || []).join(", ")}${
-                  day.leave ? `<span class="leave">${day.leave}</span>` : ""
-                }</div>`
-            )
-            .join("");
-          return `<div class="report">
-            <div class="period">${d.periodStart} ~ ${d.periodEnd}</div>
-            ${days}
-          </div>`;
-        })
-        .join("");
+      reportsData = await res.json();
+      renderList();
     } catch (err) {
       list.innerHTML = '<div class="empty">불러오기 실패: ' + err.message + "</div>";
     }
   }
+
+  document.getElementById("list").addEventListener("click", async (e) => {
+    const idx = e.target.dataset.idx;
+    if (idx === undefined) return;
+    const row = reportsData[idx];
+
+    if (e.target.classList.contains("edit-btn")) {
+      document.querySelector(`.report[data-idx="${idx}"]`).outerHTML = renderEdit(row, idx);
+    } else if (e.target.classList.contains("cancel-btn")) {
+      document.querySelector(`.report[data-idx="${idx}"]`).outerHTML = renderView(row, idx);
+    } else if (e.target.classList.contains("save-btn")) {
+      const card = document.querySelector(`.report[data-idx="${idx}"]`);
+      const msg = card.querySelector(".msg");
+      const d = JSON.parse(JSON.stringify(row.report_data));
+      card.querySelectorAll("[data-day]").forEach((el) => {
+        const di = Number(el.dataset.day);
+        if (el.dataset.field === "tasks") {
+          d.days[di].tasks = el.value.split("\n").map((s) => s.trim()).filter(Boolean);
+        } else if (el.dataset.field === "leave") {
+          d.days[di].leave = el.value.trim();
+        }
+      });
+      const remarksEl = card.querySelector('[data-field="remarks"]');
+      d.remarks = remarksEl.value.split("\n").map((s) => s.trim()).filter(Boolean);
+
+      e.target.disabled = true;
+      e.target.textContent = "저장 중...";
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/weekly_reports?id=eq.${row.id}`, {
+          method: "PATCH",
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json",
+            Prefer: "return=minimum",
+          },
+          body: JSON.stringify({ report_data: d }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        row.report_data = d;
+        card.outerHTML = renderView(row, idx);
+      } catch (err) {
+        msg.className = "msg err";
+        msg.textContent = "저장 실패: " + err.message;
+        e.target.disabled = false;
+        e.target.textContent = "저장";
+      }
+    }
+  });
 
   loadReports();
 
