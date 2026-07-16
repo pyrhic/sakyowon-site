@@ -56,8 +56,6 @@ function getThisWeekdays() {
   const monday = new Date(kst);
   monday.setUTCDate(kst.getUTCDate() + diffToMonday);
 
-  const todayKey = kst.getUTCFullYear() * 10000 + (kst.getUTCMonth() + 1) * 100 + kst.getUTCDate();
-
   const weekdays = [];
   for (let i = 0; i < 5; i++) {
     const d = new Date(monday);
@@ -71,8 +69,6 @@ function getThisWeekdays() {
       year,
       month,
       date,
-      key: year * 10000 + month * 100 + date,
-      isFuture: year * 10000 + month * 100 + date > todayKey,
     });
   }
   return weekdays;
@@ -104,6 +100,42 @@ async function polish(env, text) {
   }
 }
 
+// 기록이 없는 날(미래 포함) — 같은 주 다른 날 기록을 참고해서 AI가 추정. 반드시 확인/수정이 필요함을 전제로 함
+async function inferTasks(env, w, knownTasksText) {
+  if (!env.AI || !knownTasksText) return [];
+  try {
+    const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+      messages: [
+        {
+          role: "user",
+          content: `다음은 사교원 후진항 어촌신활력증진사업 SW매니저의 이번 주 업무 기록 중 일부야 (${w.label}(${w.dow}) 기록은 빠져 있음):\n\n${knownTasksText}\n\n이 흐름을 참고해서 ${w.label}(${w.dow})에 있었을 법한 업무를 1~2개, 짧고 개조식으로 추정해서 줄바꿈으로 구분해 출력해(설명이나 따옴표 없이). 확신이 안 서면 "일상 업무 수행" 정도로만 적어.`,
+        },
+      ],
+    });
+    return (result.response || "").trim().split("\n").map((t) => t.trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+// I열(추가부재시간) 원문 기준 실근무시간/표준 대비 +- 계산. 기록이 없으면 null (온라인에서 직접 채우게 둠)
+const WORK_START_MIN = 9 * 60;
+const WORK_END_MIN = 18 * 60;
+const LUNCH_MINUTES = 60;
+const STANDARD_HOURS = 8;
+
+function calcWorkedHours(rawCell) {
+  const text = (rawCell || "").trim();
+  const timeMatch = text.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+  if (!timeMatch) return { hours: STANDARD_HOURS, diff: 0 };
+  const startMin = Number(timeMatch[1]) * 60 + Number(timeMatch[2]);
+  const endMin = Number(timeMatch[3]) * 60 + Number(timeMatch[4]);
+  if (startMin === WORK_START_MIN && endMin === WORK_END_MIN) return { hours: 0, diff: -STANDARD_HOURS };
+  const workedMinutes = WORK_END_MIN - WORK_START_MIN - LUNCH_MINUTES - (endMin - startMin);
+  const hours = workedMinutes / 60;
+  return { hours, diff: hours - STANDARD_HOURS };
+}
+
 export async function onRequestPost(context) {
   const { env } = context;
   try {
@@ -125,32 +157,53 @@ export async function onRequestPost(context) {
     const allRows = sheetData.values || [];
     const weekdays = getThisWeekdays();
 
-    const days = [];
-    const remarks = [];
-
-    for (const w of weekdays) {
-      if (w.isFuture) {
-        remarks.push(`${w.label}(${w.dow})은 보고서 작성 시점 기준 아직 도래하지 않아 항목에서 제외함`);
-        continue;
-      }
+    const rawByDay = weekdays.map((w) => {
       const row = allRows.find((r) => (r[0] || "").trim() === w.label);
-      const rawTasks = (row?.[3] || "").trim();
-      if (!rawTasks) continue; // 아직 자료가 없는 날은 건너뜀
+      return { w, row, rawTasks: (row?.[3] || "").trim() };
+    });
 
-      const polished = await polish(env, rawTasks);
-      days.push({
-        date: w.label,
-        dow: w.dow,
-        tasks: polished.split("\n").map((t) => t.trim()).filter(Boolean),
-        leave: toLeaveLabel(row?.[7]),
-      });
-    }
+    const knownTasksText = rawByDay
+      .filter((d) => d.rawTasks)
+      .map((d) => `${d.w.label}(${d.w.dow}): ${d.rawTasks}`)
+      .join("\n");
 
-    if (days.length === 0) {
+    if (!knownTasksText) {
       return new Response(JSON.stringify({ error: "이번 주에 입력된 업무 기록이 아직 없습니다." }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    const days = [];
+    const remarks = [];
+
+    for (const { w, row, rawTasks } of rawByDay) {
+      if (rawTasks) {
+        const polished = await polish(env, rawTasks);
+        const { hours, diff } = calcWorkedHours(row?.[7]);
+        days.push({
+          date: w.label,
+          dow: w.dow,
+          tasks: polished.split("\n").map((t) => t.trim()).filter(Boolean),
+          leave: toLeaveLabel(row?.[7]),
+          hours,
+          diff,
+        });
+      } else {
+        const inferred = await inferTasks(env, w, knownTasksText);
+        days.push({
+          date: w.label,
+          dow: w.dow,
+          tasks: inferred,
+          leave: "",
+          hours: "",
+          diff: "",
+          inferred: true,
+        });
+        remarks.push(
+          `${w.label}(${w.dow})은 기록이 없어 AI가 그 주 업무 흐름을 바탕으로 추정 작성함 — 확인 후 필요시 직접 수정 필요`
+        );
+      }
     }
 
     const first = weekdays[0];
