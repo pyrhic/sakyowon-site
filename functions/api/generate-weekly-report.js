@@ -118,24 +118,6 @@ async function inferTasks(env, w, knownTasksText) {
   }
 }
 
-// I열(추가부재시간) 원문 기준 실근무시간/표준 대비 +- 계산. 기록이 없으면 null (온라인에서 직접 채우게 둠)
-const WORK_START_MIN = 9 * 60;
-const WORK_END_MIN = 18 * 60;
-const LUNCH_MINUTES = 60;
-const STANDARD_HOURS = 8;
-
-function calcWorkedHours(rawCell) {
-  const text = (rawCell || "").trim();
-  const timeMatch = text.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
-  if (!timeMatch) return { hours: STANDARD_HOURS, diff: 0 };
-  const startMin = Number(timeMatch[1]) * 60 + Number(timeMatch[2]);
-  const endMin = Number(timeMatch[3]) * 60 + Number(timeMatch[4]);
-  if (startMin === WORK_START_MIN && endMin === WORK_END_MIN) return { hours: 0, diff: -STANDARD_HOURS };
-  const workedMinutes = WORK_END_MIN - WORK_START_MIN - LUNCH_MINUTES - (endMin - startMin);
-  const hours = workedMinutes / 60;
-  return { hours, diff: hours - STANDARD_HOURS };
-}
-
 export async function onRequestPost(context) {
   const { env } = context;
   try {
@@ -180,14 +162,11 @@ export async function onRequestPost(context) {
     for (const { w, row, rawTasks } of rawByDay) {
       if (rawTasks) {
         const polished = await polish(env, rawTasks);
-        const { hours, diff } = calcWorkedHours(row?.[7]);
         days.push({
           date: w.label,
           dow: w.dow,
           tasks: polished.split("\n").map((t) => t.trim()).filter(Boolean),
           leave: toLeaveLabel(row?.[7]),
-          hours,
-          diff,
         });
       } else {
         const inferred = await inferTasks(env, w, knownTasksText);
@@ -196,8 +175,6 @@ export async function onRequestPost(context) {
           dow: w.dow,
           tasks: inferred,
           leave: "",
-          hours: "",
-          diff: "",
           inferred: true,
         });
         remarks.push(

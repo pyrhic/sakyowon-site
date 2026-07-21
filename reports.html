@@ -54,8 +54,8 @@
           `<div class="day"><span class="dow">${escapeHtml(day.date)}(${escapeHtml(day.dow)})</span>${(day.tasks || [])
             .map(escapeHtml)
             .join(", ")}${day.leave ? `<span class="leave">${escapeHtml(day.leave)}</span>` : ""}${
-            day.hours !== undefined && day.hours !== "" ? `<span class="leave">${escapeHtml(day.hours)}시간${day.diff ? ` (${day.diff > 0 ? "+" : ""}${day.diff})` : ""}</span>` : ""
-          }${day.inferred ? `<span class="leave">AI추정</span>` : ""}</div>`
+            day.inferred ? `<span class="leave">AI추정</span>` : ""
+          }</div>`
       )
       .join("");
     return `<div class="report" data-idx="${idx}">
@@ -97,7 +97,6 @@
         dow,
         tasks: existing.tasks || [],
         leave: existing.leave || "",
-        hours: existing.hours ?? "",
         inferred: existing.inferred || false,
       });
     }
@@ -110,12 +109,11 @@
     const days = slots
       .map(
         (day, di) => `
-      <label>${escapeHtml(day.date)}(${escapeHtml(day.dow)}) 업무${day.inferred ? " (AI 추정 — 확인 필요)" : ""}</label>
+      <div style="margin-top:14px;font-weight:700;">${escapeHtml(day.date)}(${escapeHtml(day.dow)})${day.inferred ? ' <span style="font-weight:400;color:#e8362a;">— AI 추정, 확인 필요</span>' : ""}</div>
+      <label>업무</label>
       <textarea data-day="${di}" data-date="${escapeHtml(day.date)}" data-dow="${escapeHtml(day.dow)}" data-field="tasks" style="min-height:70px;">${escapeHtml((day.tasks || []).join("\n"))}</textarea>
-      <label>${escapeHtml(day.date)}(${escapeHtml(day.dow)}) 휴가/기타</label>
+      <label>근무시간</label>
       <input data-day="${di}" data-date="${escapeHtml(day.date)}" data-dow="${escapeHtml(day.dow)}" data-field="leave" value="${escapeHtml(day.leave || "")}">
-      <label>${escapeHtml(day.date)}(${escapeHtml(day.dow)}) 근무시간</label>
-      <input data-day="${di}" data-date="${escapeHtml(day.date)}" data-dow="${escapeHtml(day.dow)}" data-field="hours" value="${escapeHtml(day.hours)}">
     `
       )
       .join("");
@@ -176,20 +174,18 @@
       const slotsMap = {};
       card.querySelectorAll("[data-day]").forEach((el) => {
         const di = Number(el.dataset.day);
-        if (!slotsMap[di]) slotsMap[di] = { date: el.dataset.date, dow: el.dataset.dow, tasks: [], leave: "", hours: "" };
+        if (!slotsMap[di]) slotsMap[di] = { date: el.dataset.date, dow: el.dataset.dow, tasks: [], leave: "" };
         if (el.dataset.field === "tasks") {
           slotsMap[di].tasks = el.value.split("\n").map((s) => s.trim()).filter(Boolean);
         } else if (el.dataset.field === "leave") {
           slotsMap[di].leave = el.value.trim();
-        } else if (el.dataset.field === "hours") {
-          slotsMap[di].hours = el.value.trim();
         }
       });
       d.days = Object.keys(slotsMap)
         .map(Number)
         .sort((a, b) => a - b)
         .map((i) => slotsMap[i])
-        .filter((day) => day.tasks.length > 0 || day.leave || day.hours);
+        .filter((day) => day.tasks.length > 0 || day.leave);
       const remarksEl = card.querySelector('[data-field="remarks"]');
       d.remarks = remarksEl.value.split("\n").map((s) => s.trim()).filter(Boolean);
 
