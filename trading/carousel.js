@@ -8,13 +8,13 @@
   ];
 
   function currentIndex() {
-    const path = location.pathname;
-    return PAGES.findIndex((p) => p.href === path);
+    const path = location.pathname.replace(/\.html$/, "").replace(/\/$/, "");
+    return PAGES.findIndex((p) => p.href.replace(/\.html$/, "") === path);
   }
 
   function goTo(idx) {
     const wrapped = (idx + PAGES.length) % PAGES.length;
-    location.href = PAGES[wrapped].href;
+    location.href = PAGES[wrapped].href.replace(/\.html$/, "");
   }
 
   function renderNav() {
