@@ -128,3 +128,22 @@ a.back {
   text-align: center;
   margin-top: 40px;
 }
+
+.essay {
+  background: #ffffff;
+  border: 1px solid #ddd6c4;
+  border-radius: 6px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+.essay h2 {
+  margin: 0 0 12px;
+  font-size: 1.2rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.essay .content {
+  white-space: pre-wrap;
+  line-height: 1.8;
+  font-size: 1rem;
+}
