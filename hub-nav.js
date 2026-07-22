@@ -19,13 +19,10 @@
       top: 50%;
       ${side}: 10px;
       transform: translateY(-50%);
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: 2px solid ${color};
-      background: rgba(255,255,255,0.85);
+      border: none;
+      background: transparent;
       color: ${color};
-      font-size: 1.1rem;
+      font-size: 1.6rem;
       font-weight: 700;
       cursor: pointer;
       z-index: 10;
