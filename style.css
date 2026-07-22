@@ -155,13 +155,13 @@ a.back {
   font-weight: 700;
 }
 
-.hwp-btn {
+a.hwp-btn {
   text-transform: none;
   background: #cfe9f5;
   border-color: #cfe9f5;
   color: #0d1b2a;
 }
-.hwp-btn:hover {
+a.hwp-btn:hover {
   background: #a9d7ec;
   border-color: #a9d7ec;
   color: #0d1b2a;
