@@ -32,7 +32,12 @@
         return;
       }
       list.innerHTML = rows
-        .map((r) => `<div class="essay"><h2>${escapeHtml(r.title)}</h2><div class="content">${escapeHtml(r.content)}</div></div>`)
+        .map((r) => {
+          const body = r.paragraphs
+            .map((p) => (p.trim() ? `<p>${escapeHtml(p)}</p>` : '<div class="blank-line"></div>'))
+            .join("");
+          return `<div class="essay"><h2>${escapeHtml(r.title)}</h2><div class="content">${body}</div></div>`;
+        })
         .join("");
     } catch (err) {
       list.innerHTML = '<div class="empty">불러오기 실패: ' + err.message + "</div>";

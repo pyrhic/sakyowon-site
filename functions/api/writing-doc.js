@@ -127,10 +127,12 @@ export async function onRequestGet(context) {
     }
 
     const bodyContent = tab.documentTab?.body?.content || [];
-    const essays = parseEssays(bodyContent).map((e) => ({
-      title: e.title,
-      content: e.paragraphs.join("\n").trim(),
-    }));
+    const essays = parseEssays(bodyContent).map((e) => {
+      const paragraphs = e.paragraphs.slice();
+      while (paragraphs.length && !paragraphs[0].trim()) paragraphs.shift();
+      while (paragraphs.length && !paragraphs[paragraphs.length - 1].trim()) paragraphs.pop();
+      return { title: e.title, paragraphs };
+    });
 
     return new Response(JSON.stringify(essays), {
       headers: { "Content-Type": "application/json" },
