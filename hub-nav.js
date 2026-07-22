@@ -1,18 +1,26 @@
 (function () {
-  const PAGES = ["/writing/index.html", "/", "/trading/index.html"];
+  // 순서: 스킴밐스 - 글쓰기 - 사교원(홈) - 트레이딩
+  const PAGES = [
+    { url: "https://polos-cxn.pages.dev/skimmiks/index.html", color: "#0d1b2a" },
+    { url: "https://polos-cxn.pages.dev/writing/index.html", color: "#111111" },
+    { url: "https://sakyowon-site-5m5.pages.dev/", color: "#0d1b2a" },
+    { url: "https://polos-cxn.pages.dev/trading/index.html", color: "#0f3d33" },
+  ];
 
   function getSection() {
-    if (location.pathname.startsWith("/trading")) return 2;
-    if (location.pathname.startsWith("/writing")) return 0;
-    return 1;
+    if (location.hostname.includes("sakyowon-site")) return 2;
+    if (location.pathname.startsWith("/skimmiks")) return 0;
+    if (location.pathname.startsWith("/writing")) return 1;
+    if (location.pathname.startsWith("/trading")) return 3;
+    return -1;
   }
 
-  const COLORS = ["#111111", "#0d1b2a", "#0f3d33"];
   const section = getSection();
-  const color = COLORS[section];
+  if (section === -1) return;
+  const color = PAGES[section].color;
 
   function goTo(idx) {
-    location.href = PAGES[idx];
+    location.href = PAGES[idx].url;
   }
 
   // 인스타그램 사진 넘기기처럼, 지금 몇 번째 화면인지만 보여주는 점 - 누르면 그 페이지로 이동
