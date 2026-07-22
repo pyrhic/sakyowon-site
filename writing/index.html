@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>글쓰기 — 이규영</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0d1b2a">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+</head>
+<body>
+  <div class="card" style="display:flex;align-items:center;min-height:calc(100vh - 40px);">
+    <div style="width:100%;">
+      <div class="links">
+        <a class="link-btn" href="https://yangyang-legend.pages.dev" target="_blank">양양전설</a>
+        <button type="button" class="link-btn" data-soon>에세이</button>
+        <button type="button" class="link-btn" data-soon>일일일시</button>
+        <button type="button" class="link-btn" data-soon>습작의기억</button>
+      </div>
+    </div>
+  </div>
+<script>
+  document.querySelectorAll("[data-soon]").forEach((btn) => {
+    btn.addEventListener("click", () => alert("준비중입니다."));
+  });
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js");
+  }
+</script>
+<script src="/hub-nav.js"></script>
+</body>
+</html>

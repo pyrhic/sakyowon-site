@@ -1,13 +1,20 @@
 (function () {
-  const isTrading = location.pathname.startsWith("/trading");
-  const target = isTrading ? "/" : "/trading/index.html";
-  const color = isTrading ? "#0f3d33" : "#0d1b2a";
+  const PAGES = ["/writing/index.html", "/", "/trading/index.html"];
 
-  function goTarget() {
-    location.href = target;
+  function getSection() {
+    if (location.pathname.startsWith("/trading")) return 2;
+    if (location.pathname.startsWith("/writing")) return 0;
+    return 1;
   }
 
-  // 인스타그램 사진 넘기기처럼, 지금 몇 번째 화면인지만 보여주는 점 2개 (클릭 아님, 스와이프로만 이동)
+  const section = getSection();
+  const color = section === 2 ? "#0f3d33" : "#0d1b2a";
+
+  function goTo(idx) {
+    location.href = PAGES[idx];
+  }
+
+  // 인스타그램 사진 넘기기처럼, 지금 몇 번째 화면인지만 보여주는 점 - 누르면 그 페이지로 이동
   function renderDots() {
     const wrap = document.createElement("div");
     wrap.style.cssText = `
@@ -17,20 +24,23 @@
       right: 0;
       display: flex;
       justify-content: center;
-      gap: 8px;
+      gap: 10px;
       z-index: 10;
-      pointer-events: none;
     `;
-    [0, 1].forEach((i) => {
-      const active = isTrading ? i === 1 : i === 0;
-      const dot = document.createElement("span");
+    PAGES.forEach((_, i) => {
+      const dot = document.createElement("button");
+      dot.type = "button";
       dot.style.cssText = `
         width: 7px;
         height: 7px;
+        padding: 0;
+        border: none;
         border-radius: 50%;
         background: ${color};
-        opacity: ${active ? 0.9 : 0.25};
+        opacity: ${i === section ? 0.9 : 0.25};
+        cursor: pointer;
       `;
+      if (i !== section) dot.addEventListener("click", () => goTo(i));
       wrap.appendChild(dot);
     });
     document.body.appendChild(wrap);
@@ -43,10 +53,8 @@
       if (startX === null) return;
       const dx = e.changedTouches[0].clientX - startX;
       startX = null;
-      if (Math.abs(dx) < 60) return;
-      // 홈: 왼쪽으로 스와이프 -> 트레이딩. 트레이딩: 오른쪽으로 스와이프 -> 홈
-      if (!isTrading && dx < 0) goTarget();
-      if (isTrading && dx > 0) goTarget();
+      if (dx < -60 && section < PAGES.length - 1) goTo(section + 1);
+      else if (dx > 60 && section > 0) goTo(section - 1);
     }, { passive: true });
   }
 
