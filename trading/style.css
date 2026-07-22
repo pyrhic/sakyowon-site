@@ -213,32 +213,3 @@ a.back {
   margin-top: 0;
   padding: 10px 16px;
 }
-
-/* 캐러셀(스와이프/화살표) 네비게이션 - 5개 하위 페이지 공통 */
-.carousel-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 28px;
-  padding-top: 16px;
-  border-top: 2px solid #0f3d33;
-}
-.carousel-nav .arrow {
-  width: auto;
-  padding: 10px 18px;
-  font-size: 1.1rem;
-}
-.carousel-nav .dots {
-  display: flex;
-  gap: 6px;
-}
-.carousel-nav .dots span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ffffff;
-  border: 2px solid #0f3d33;
-}
-.carousel-nav .dots span.active {
-  background: #0f3d33;
-}
