@@ -7,8 +7,9 @@
     return 1;
   }
 
+  const COLORS = ["#111111", "#0d1b2a", "#0f3d33"];
   const section = getSection();
-  const color = section === 2 ? "#0f3d33" : "#0d1b2a";
+  const color = COLORS[section];
 
   function goTo(idx) {
     location.href = PAGES[idx];
