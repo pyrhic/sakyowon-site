@@ -2,45 +2,38 @@
   const isTrading = location.pathname.startsWith("/trading");
   const target = isTrading ? "/" : "/trading/index.html";
   const color = isTrading ? "#0f3d33" : "#0d1b2a";
-  const side = isTrading ? "left" : "right";
 
   function goTarget() {
     location.href = target;
   }
 
-  function renderPeek() {
-    const style = document.createElement("style");
-    style.textContent = `
-      @keyframes hubNavPeekFlash {
-        0% { opacity: 0.2; }
-        35% { opacity: 0.85; }
-        100% { opacity: 0.3; }
-      }
-      .hub-nav-peek {
-        position: fixed;
-        top: 50%;
-        ${side}: 0;
-        transform: translateY(-50%);
-        width: 14px;
-        height: 20vh;
-        border-radius: 999px;
-        background: ${color};
-        border: none;
-        padding: 0;
-        cursor: pointer;
-        z-index: 10;
-        opacity: 0.3;
-        animation: hubNavPeekFlash 1.4s ease-in-out 1;
-      }
+  // 인스타그램 사진 넘기기처럼, 지금 몇 번째 화면인지만 보여주는 점 2개 (클릭 아님, 스와이프로만 이동)
+  function renderDots() {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = `
+      position: fixed;
+      bottom: 14px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      z-index: 10;
+      pointer-events: none;
     `;
-    document.head.appendChild(style);
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "hub-nav-peek";
-    btn.setAttribute("aria-label", isTrading ? "이규영 홈으로" : "트레이딩 일지로");
-    btn.addEventListener("click", goTarget);
-    document.body.appendChild(btn);
+    [0, 1].forEach((i) => {
+      const active = isTrading ? i === 1 : i === 0;
+      const dot = document.createElement("span");
+      dot.style.cssText = `
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: ${color};
+        opacity: ${active ? 0.9 : 0.25};
+      `;
+      wrap.appendChild(dot);
+    });
+    document.body.appendChild(wrap);
   }
 
   function setupSwipe() {
@@ -58,7 +51,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    renderPeek();
+    renderDots();
     setupSwipe();
   });
 })();
