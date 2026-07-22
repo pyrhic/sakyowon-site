@@ -2,31 +2,43 @@
   const isTrading = location.pathname.startsWith("/trading");
   const target = isTrading ? "/" : "/trading/index.html";
   const color = isTrading ? "#0f3d33" : "#0d1b2a";
-  const label = isTrading ? "◀" : "▶";
   const side = isTrading ? "left" : "right";
 
   function goTarget() {
     location.href = target;
   }
 
-  function renderArrow() {
+  function renderPeek() {
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes hubNavPeekFlash {
+        0% { opacity: 0.2; }
+        35% { opacity: 0.85; }
+        100% { opacity: 0.3; }
+      }
+      .hub-nav-peek {
+        position: fixed;
+        top: 50%;
+        ${side}: 0;
+        transform: translateY(-50%);
+        width: 14px;
+        height: 20vh;
+        border-radius: 999px;
+        background: ${color};
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        z-index: 10;
+        opacity: 0.3;
+        animation: hubNavPeekFlash 1.4s ease-in-out 1;
+      }
+    `;
+    document.head.appendChild(style);
+
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = label;
+    btn.className = "hub-nav-peek";
     btn.setAttribute("aria-label", isTrading ? "이규영 홈으로" : "트레이딩 일지로");
-    btn.style.cssText = `
-      position: fixed;
-      top: 50%;
-      ${side}: 10px;
-      transform: translateY(-50%);
-      border: none;
-      background: transparent;
-      color: ${color};
-      font-size: 1.6rem;
-      font-weight: 700;
-      cursor: pointer;
-      z-index: 10;
-    `;
     btn.addEventListener("click", goTarget);
     document.body.appendChild(btn);
   }
@@ -46,7 +58,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    renderArrow();
+    renderPeek();
     setupSwipe();
   });
 })();
